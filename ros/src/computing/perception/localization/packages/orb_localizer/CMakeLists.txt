@@ -18,7 +18,18 @@ LIST(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake_modules)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -fPIC")
 
 find_package (Boost REQUIRED COMPONENTS system serialization python)
+
 find_package (OpenCV REQUIRED)
+if (NOT (
+	(${OpenCV_VERSION_MAJOR} EQUAL 2) 
+	AND 
+	(${OpenCV_VERSION_MINOR} EQUAL 4) 
+	))
+	message (FATAL_ERROR "Incompatible OpenCV version; must be 2.4.x. Found " ${OpenCV_VERSION})
+else()
+	message ("OpenCV Version: " ${OpenCV_VERSION})
+endif()
+
 find_package (OpenGL REQUIRED)
 find_package (GLEW REQUIRED)
 find_package (BLAS REQUIRED)
@@ -214,6 +225,30 @@ target_link_libraries (
                 ${LINK_LIBRARIES}
 )
 
+
+add_executable (
+	place_recognizer
+		nodes/place_recognizer/place_recognizer.cpp
+		nodes/common.cpp
+)
+
+target_link_libraries (
+	place_recognizer
+		${catkin_LIBRARIES}
+		${ORB_BIN_LINKS}
+		${LINK_LIBRARIES}
+)
+
+add_executable (
+	image_testpub
+		nodes/place_recognizer/image_publisher.cpp
+)
+
+target_link_libraries (
+	image_testpub
+		${catkin_LIBRARIES}
+		${OpenCV_LIBS}
+)
 
 
 add_executable (
