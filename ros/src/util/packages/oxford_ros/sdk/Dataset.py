@@ -1,6 +1,7 @@
 
 import os
 import re
+import numpy as np
 from datetime import datetime as dt
 
 
@@ -51,4 +52,9 @@ class Dataset:
         pass
     
     def getIns (self):
-        pass
+        # Get timestamp, easting, northing, altitude, roll, pitch, yaw
+        insTbl = np.loadt(self.path+'/gps/ins.csv', skiprows=1, usecols=[0,6,5,4,12,13,14])
+        ins[:,0] /= 1000000
+        insTbl[:,1] -= 620248.53
+        insTbl[:,2] -= 5734882.47
+        return insTbl
