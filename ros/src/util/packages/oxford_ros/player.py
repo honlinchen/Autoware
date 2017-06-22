@@ -3,6 +3,7 @@
 import sdk
 import time
 import rospy
+import cv2
 import cv_bridge
 from tf import transformations
 
@@ -15,14 +16,21 @@ from rosgraph_msgs.msg import Clock
 class ImagePlayer:
     def __init__ (self, dataset):
         self.publisher = rospy.Publisher ('/oxford/image', ImageMsg, queue_size=1)
-        cam_ts = dataset.getStereo()
+        self.imageList = dataset.getStereo()
         self.cameraModel = sdk.CameraModel ('models', sdk.CameraModel.cam_stereo_center)
 
     def _getEvents (self):
-        pass
+        eventList = [ {'timestamp':self.imageList[i]['timestamp'], 'id':i} for i in range(len(self.imageList)) ]
+        return eventList
     
     def _passEvent (self, timestamp, eventId):
-        pass
+        imageTarget = self.imageList[eventId]
+        image_ctr = cv2.imread(imageTarget['center'], cv2.IMREAD_ANYCOLOR)
+        image_ctr = cv2.cvtColor(image_ctr, cv2.COLOR_BAYER_GR2BGR)
+        image_ctr = self.cameraModel.undistort (image_ctr)
+        msg = cvbridge.cv2_to_imgmsg(image_ctr, 'bgr8')
+        msg.header.stamp = rospy.Time.from_sec (imageTarget['timestamp'])
+        self.publisher.publish(msg)
 
 
 class PosePlayer:
@@ -104,9 +112,9 @@ if __name__ == '__main__' :
     import sys
     rospy.init_node('oxford_player', anonymous=True)
     player = Player (sys.argv[1])
-    poses = PosePlayer (player.dataset)
+#     poses = PosePlayer (player.dataset)
     images = ImagePlayer(player.dataset)
-    player.add_data_player(poses)
+#     player.add_data_player(poses)
     player.add_data_player(images)
     player.run()
 
