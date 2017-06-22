@@ -5,6 +5,7 @@ import time
 import rospy
 import cv2
 import cv_bridge
+import rospkg
 from tf import transformations
 
 from geometry_msgs.msg import PoseStamped as PoseMsg
@@ -17,7 +18,10 @@ class ImagePlayer:
     def __init__ (self, dataset):
         self.publisher = rospy.Publisher ('/oxford/image', ImageMsg, queue_size=1)
         self.imageList = dataset.getStereo()
-        self.cameraModel = sdk.CameraModel ('models', sdk.CameraModel.cam_stereo_center)
+        pkgpack = rospkg.RosPack()
+        path = pkgpack.get_path('oxford_ros')
+        self.cameraModel = sdk.CameraModel (path+'/models', sdk.CameraModel.cam_stereo_center)
+        self.cvbridge = cv_bridge.CvBridge()
 
     def _getEvents (self):
         eventList = [ {'timestamp':self.imageList[i]['timestamp'], 'id':i} for i in range(len(self.imageList)) ]
@@ -28,7 +32,7 @@ class ImagePlayer:
         image_ctr = cv2.imread(imageTarget['center'], cv2.IMREAD_ANYCOLOR)
         image_ctr = cv2.cvtColor(image_ctr, cv2.COLOR_BAYER_GR2BGR)
         image_ctr = self.cameraModel.undistort (image_ctr)
-        msg = cvbridge.cv2_to_imgmsg(image_ctr, 'bgr8')
+        msg = self.cvbridge.cv2_to_imgmsg(image_ctr, 'bgr8')
         msg.header.stamp = rospy.Time.from_sec (imageTarget['timestamp'])
         self.publisher.publish(msg)
 
