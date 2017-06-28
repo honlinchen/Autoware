@@ -22,7 +22,7 @@ class ImagePlayer:
         self.imageList = dataset.getStereo()
         pkgpack = rospkg.RosPack()
         path = pkgpack.get_path('oxford_ros')
-        self.cameraModel = sdk.CameraModel (path+'/models', sdk.CameraModel.cam_stereo_center)
+#         self.cameraModel = sdk.CameraModel (path+'/models', sdk.CameraModel.cam_stereo_center)
         
         calib_file = file(path+'/calibration_files/bb_xb3_center.yaml')
         conf = yaml.load(calib_file)
@@ -36,7 +36,7 @@ class ImagePlayer:
         eventList = [ {'timestamp':self.imageList[i]['timestamp'], 'id':i} for i in range(len(self.imageList)) ]
         return eventList
     
-    def _passEvent (self, timestamp, eventId):
+    def _passEvent (self, timestamp, eventId, publish=True):
         imageTarget = self.imageList[eventId]
         image_ctr = cv2.imread(imageTarget['center'], cv2.IMREAD_ANYCOLOR)
         image_ctr = cv2.cvtColor(image_ctr, cv2.COLOR_BAYER_GR2BGR)
@@ -46,7 +46,10 @@ class ImagePlayer:
 #         image_ctr = self.cameraModel.undistort (image_ctr)
         msg = self.cvbridge.cv2_to_imgmsg(image_ctr, 'bgr8')
         msg.header.stamp = rospy.Time.from_sec (imageTarget['timestamp'])
-        self.publisher.publish(msg)
+        if (publish):
+            self.publisher.publish(msg)
+        else:
+            return msg
 
 
 class PosePlayer:
@@ -58,12 +61,15 @@ class PosePlayer:
         eventList = [{'timestamp':self.poses[p,0], 'id':p} for p in range(len(self.poses))]
         return eventList
     
-    def _passEvent (self, timestamp, eventId):
+    def _passEvent (self, timestamp, eventId, publish=True):
         poseRow = self.poses[eventId]
         curPose = PosePlayer.createPoseFromRPY(poseRow[1], poseRow[2], poseRow[3], poseRow[4], poseRow[5], poseRow[6])
         curPose.header.stamp = rospy.Time.from_sec(poseRow[0])
         curPose.header.frame_id = 'world'
-        self.publisher.publish(curPose)
+        if (publish):
+            self.publisher.publish(curPose)
+        else:
+            return curPose
         
     @staticmethod
     def createPoseFromRPY (x, y, z, roll, pitch, yaw):
@@ -126,8 +132,15 @@ class Player:
         
 if __name__ == '__main__' :
     import sys
+    import argparse
+    
+    argsp = argparse.ArgumentParser('Oxford ROS Player')
+    argsp.add_argument('--dir', type=str, default=None, help='Directory of Oxford dataset')
+    argsp.add_argument('--rate', type=float, default=1.0, help='Speed up/Slow down by rate factor')
+    args = argsp.parse_args()
+    
     rospy.init_node('oxford_player', anonymous=True)
-    player = Player (sys.argv[1])
+    player = Player (args.dir, args.rate)
     poses = PosePlayer (player.dataset)
     images = ImagePlayer(player.dataset)
     player.add_data_player(poses)
