@@ -3,10 +3,12 @@
 import sdk
 import time
 import rospy
+import yaml
 import cv2
 import cv_bridge
 import rospkg
 from tf import transformations
+import numpy as np
 
 from geometry_msgs.msg import PoseStamped as PoseMsg
 from sensor_msgs.msg import Image as ImageMsg
@@ -21,6 +23,13 @@ class ImagePlayer:
         pkgpack = rospkg.RosPack()
         path = pkgpack.get_path('oxford_ros')
         self.cameraModel = sdk.CameraModel (path+'/models', sdk.CameraModel.cam_stereo_center)
+        
+        calib_file = file(path+'/calibration_files/bb_xb3_center.yaml')
+        conf = yaml.load(calib_file)
+        self.camera_matrix = np.reshape(conf['camera_matrix']['data'], (3,3))
+        self.projection_matrix = np.reshape(conf['projection_matrix']['data'], (3,4))
+        self.distortion_coefs = np.array(conf['distortion_coefficients']['data'])
+#         self.calibrator = cv2.cv.Load(path+'/calibration_files/bb_xb3_center.yaml')
         self.cvbridge = cv_bridge.CvBridge()
 
     def _getEvents (self):
@@ -31,7 +40,10 @@ class ImagePlayer:
         imageTarget = self.imageList[eventId]
         image_ctr = cv2.imread(imageTarget['center'], cv2.IMREAD_ANYCOLOR)
         image_ctr = cv2.cvtColor(image_ctr, cv2.COLOR_BAYER_GR2BGR)
-        image_ctr = self.cameraModel.undistort (image_ctr)
+        # Using camera matrix
+        image_ctr = cv2.undistort(image_ctr, self.camera_matrix, self.distortion_coefs)
+        # Using LUT
+#         image_ctr = self.cameraModel.undistort (image_ctr)
         msg = self.cvbridge.cv2_to_imgmsg(image_ctr, 'bgr8')
         msg.header.stamp = rospy.Time.from_sec (imageTarget['timestamp'])
         self.publisher.publish(msg)
@@ -116,9 +128,9 @@ if __name__ == '__main__' :
     import sys
     rospy.init_node('oxford_player', anonymous=True)
     player = Player (sys.argv[1])
-#     poses = PosePlayer (player.dataset)
+    poses = PosePlayer (player.dataset)
     images = ImagePlayer(player.dataset)
-#     player.add_data_player(poses)
+    player.add_data_player(poses)
     player.add_data_player(images)
     player.run()
 
