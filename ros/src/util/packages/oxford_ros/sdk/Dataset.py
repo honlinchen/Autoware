@@ -47,7 +47,11 @@ class Dataset:
         return fileList
     
     def getMainLidar (self):
-        pass
+        timestamps = self.getTimestamp('ldmrs', raw=True)
+        filelist = []
+        for ts in timestamps:
+            filelist.append (self.path + '/ldmrs/' + ts + '.bin')
+        return filelist
     
     def getGps (self):
         gpsTbl = np.loadtxt(self.path+'/gps/gps.csv',
