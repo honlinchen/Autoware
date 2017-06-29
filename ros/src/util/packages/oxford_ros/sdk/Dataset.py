@@ -50,7 +50,14 @@ class Dataset:
         pass
     
     def getGps (self):
-        pass
+        gpsTbl = np.loadtxt(self.path+'/gps/gps.csv',
+            skiprows=1,
+            delimiter=',',
+            usecols=[0,9,8,4])
+        gpsTbl[:,0] /= 1000000.0
+        gpsTbl[:,1] -= 620248.53
+        gpsTbl[:,2] -= 5734882.47
+        return gpsTbl
     
     def getIns (self):
         # Get timestamp, easting, northing, altitude, roll, pitch, yaw

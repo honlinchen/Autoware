@@ -91,7 +91,7 @@ class Player:
         self.eventList = []
         self.dataset = sdk.Dataset(datadir)
         self.players = []
-#         self.clockPub = rospy.Publisher ('/clock', Clock, queue_size=1)
+        self.clockPub = rospy.Publisher ('/clock', Clock, queue_size=1)
         
     def add_data_player (self, _dataPlayer):
         self.players.append(_dataPlayer)
@@ -106,7 +106,7 @@ class Player:
                 if i<len(self.eventList)-1 :
                     t2 = self.eventList[i+1]['timestamp']
                     delay = (t2 - t1) / self.rate
-#                     self.publishClock(curEvent['timestamp'])
+                    self.publishClock(curEvent['timestamp'])
                     time.sleep(delay)
                 if (rospy.is_shutdown()):
                     break
