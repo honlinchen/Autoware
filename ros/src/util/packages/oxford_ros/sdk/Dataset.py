@@ -10,6 +10,9 @@ class Dataset:
 #     poseModeGps = 1
 #     poseModeIns = 2
 #     poseModeVO  = 3
+
+    OriginCorrectionEasting = -620248.53
+    OriginCorrectionNorthing = -5734882.47
     
     def __init__ (self, datadir):
         if (not os.path.isdir(datadir)):
@@ -50,26 +53,29 @@ class Dataset:
         timestamps = self.getTimestamp('ldmrs', raw=True)
         filelist = []
         for ts in timestamps:
-            filelist.append (self.path + '/ldmrs/' + ts + '.bin')
+            f = {'timestamp': float(ts)/1000000.0, 'path': self.path + '/ldmrs/' + ts + '.bin'}
+            filelist.append (f)
         return filelist
     
-    def getGps (self):
+    def getGps (self, useOriginCorrection=True):
         gpsTbl = np.loadtxt(self.path+'/gps/gps.csv',
             skiprows=1,
             delimiter=',',
             usecols=[0,9,8,4])
         gpsTbl[:,0] /= 1000000.0
-        gpsTbl[:,1] -= 620248.53
-        gpsTbl[:,2] -= 5734882.47
+        if useOriginCorrection:
+            gpsTbl[:,1] += Dataset.OriginCorrectionEasting
+            gpsTbl[:,2] += Dataset.OriginCorrectionNorthing
         return gpsTbl
     
-    def getIns (self):
+    def getIns (self, useOriginCorrection=True):
         # Get timestamp, easting, northing, altitude, roll, pitch, yaw
         insTbl = np.loadtxt(self.path+'/gps/ins.csv', 
             skiprows=1, 
             delimiter=',', 
             usecols=[0,6,5,4,12,13,14])
-        insTbl[:,0] /= 1000000
-        insTbl[:,1] -= 620248.53
-        insTbl[:,2] -= 5734882.47
+        insTbl[:,0] /= 1000000.0
+        if useOriginCorrection:
+            insTbl[:,1] += Dataset.OriginCorrectionEasting
+            insTbl[:,2] += Dataset.OriginCorrectionNorthing
         return insTbl

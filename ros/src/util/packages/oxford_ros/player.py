@@ -8,11 +8,17 @@ import cv2
 import cv_bridge
 import rospkg
 from tf import transformations
+from tf import TransformBroadcaster
 import numpy as np
 
 from geometry_msgs.msg import PoseStamped as PoseMsg
 from sensor_msgs.msg import Image as ImageMsg
+from sensor_msgs.msg import PointCloud2
+from sensor_msgs.msg import PointField
 from rosgraph_msgs.msg import Clock
+import std_msgs.msg
+import sensor_msgs.point_cloud2 as pcl2
+import std_msgs
 
 
 
@@ -50,6 +56,40 @@ class ImagePlayer:
             self.publisher.publish(msg)
         else:
             return msg
+
+
+class LidarPlayer:
+    def __init__ (self, dataset):
+        self.lidarFileSet = dataset.getMainLidar()
+        self.publisher = rospy.Publisher ('/oxford/ldmrs', PointCloud2, queue_size=10)
+        pass
+    
+    def _getEvents (self):
+        eventList = [ {
+            'timestamp': self.lidarFileSet[i]['timestamp'],
+            'id': i
+        } for i in range(len(self.lidarFileSet)) ]
+        return eventList
+    
+    def _passEvent (self, timestamp, eventId, publish=True):
+        lidarFile = self.lidarFileSet[eventId]
+        scan = np.fromfile(lidarFile['path'], np.double)
+        scan = scan.reshape((len(scan) // 3, 3))        
+        header = std_msgs.msg.Header(
+            stamp=rospy.Time.from_sec(timestamp), 
+            frame_id='ldmrs')
+        fields = [
+            PointField(name='x', offset=0, datatype=PointField.FLOAT64, count=1),
+            PointField(name='y', offset=8, datatype=PointField.FLOAT64, count=1),
+            PointField(name='z', offset=16, datatype=PointField.FLOAT64, count=1)
+        ]
+        msg = pcl2.create_cloud(header, fields, scan)
+        if (publish):
+            self.publisher.publish(msg)
+        else:
+            return msg
+        
+
 
 
 class PosePlayer:
@@ -143,7 +183,9 @@ if __name__ == '__main__' :
     player = Player (args.dir, args.rate)
     poses = PosePlayer (player.dataset)
     images = ImagePlayer(player.dataset)
+    lidar3d = LidarPlayer (player.dataset)
     player.add_data_player(poses)
     player.add_data_player(images)
+    player.add_data_player(lidar3d)
     player.run()
 
